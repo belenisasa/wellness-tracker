@@ -120,7 +120,7 @@
   .wd.today .dl{color:var(--c1);}
 
   .wbtn{display:flex;gap:8px;margin-top:2px;}
-  input[type=number]{flex:1;font-family:var(--body);font-size:16px;padding:12px 14px;border:1.6px solid var(--line);border-radius:13px;outline:none;-webkit-appearance:none;background:#fff;color:var(--ink);}
+  input[type=number],input[inputmode="decimal"]{flex:1;font-family:var(--body);font-size:16px;padding:12px 14px;border:1.6px solid var(--line);border-radius:13px;outline:none;-webkit-appearance:none;background:#fff;color:var(--ink);}
   input:focus{border-color:var(--c2);}
   .btn{font-family:var(--body);font-weight:700;font-size:15px;letter-spacing:.01em;color:#fff;background:var(--ink);border:none;border-radius:13px;padding:0 18px;cursor:pointer;}
   .btn.grad{background:linear-gradient(135deg,var(--c2),var(--c1));}
@@ -326,7 +326,7 @@
       <h3 class="card-t">Tu curva de peso</h3>
       <p class="card-s" style="margin-bottom:6px">La línea llena es tu tendencia de 7 días (suaviza el ruido diario); los puntos son tus registros. Verde punteada: meta. Gris: el ritmo para llegar en 3 meses.</p>
       <div class="wbtn">
-        <input type="number" id="wInput" inputmode="decimal" placeholder="Registrar peso de hoy (ej: 71.5)" step="0.1">
+        <input type="text" id="wInput" inputmode="decimal" placeholder="Registrar peso de hoy (ej: 71,5)" autocomplete="off">
         <button class="btn grad" id="wSave">Guardar</button>
       </div>
       <div class="chart" id="chart"></div>
@@ -376,8 +376,8 @@
   <div class="box2">
     <h2>¡Empecemos!</h2>
     <p class="sub">Anotá tu peso de partida. Tu meta se fija en 10 kg menos.</p>
-    <div class="fld"><label>Peso actual (kg)</label><input type="number" id="sStart" inputmode="decimal" placeholder="Ej: 78" step="0.1"></div>
-    <div class="fld"><label>Meta (kg)</label><input type="number" id="sGoal" inputmode="decimal" placeholder="Ej: 68" step="0.1"></div>
+    <div class="fld"><label>Peso actual (kg)</label><input type="text" id="sStart" inputmode="decimal" placeholder="Ej: 78" autocomplete="off"></div>
+    <div class="fld"><label>Meta (kg)</label><input type="text" id="sGoal" inputmode="decimal" placeholder="Ej: 68" autocomplete="off"></div>
     <button class="btn grad block" id="sSave">Arrancar</button>
   </div>
 </div>
@@ -386,8 +386,8 @@
   <div class="box2">
     <h2>Ajustes</h2>
     <p class="sub">Cambiá tu meta o hacé una copia de seguridad.</p>
-    <div class="fld"><label>Peso inicial (kg)</label><input type="number" id="sgStart" inputmode="decimal" step="0.1"></div>
-    <div class="fld"><label>Meta (kg)</label><input type="number" id="sgGoal" inputmode="decimal" step="0.1"></div>
+    <div class="fld"><label>Peso inicial (kg)</label><input type="text" id="sgStart" inputmode="decimal" autocomplete="off"></div>
+    <div class="fld"><label>Meta (kg)</label><input type="text" id="sgGoal" inputmode="decimal" autocomplete="off"></div>
     <div class="fld"><label>Día de pesaje</label><select id="sgWeigh">
       <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
       <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
@@ -439,6 +439,7 @@
     return DOW[d.getDay()]+", "+d.getDate()+" de "+m[d.getMonth()];}
   function nf(x){return (Math.round(x*10)/10).toString().replace(".",",");}
   var g=function(id){return document.getElementById(id);};
+  function pf(id){return parseFloat(String(g(id).value).replace(",","."));}
   g("heroDate").textContent=fmtLong(new Date());
 
   function animNum(el,to,dec,pre,suf){
@@ -454,9 +455,9 @@
 
   function needSetup(){return !S || S.start==null;}
   function openSetup(){g("setup").classList.remove("hidden");
-    g("sStart").oninput=function(){var v=parseFloat(this.value);if(!isNaN(v))g("sGoal").value=(Math.round((v-10)*10)/10);};}
+    g("sStart").oninput=function(){var v=parseFloat(this.value.replace(",","."));if(!isNaN(v))g("sGoal").value=nf(v-10);};}
   g("sSave").onclick=function(){
-    var st=parseFloat(g("sStart").value),go=parseFloat(g("sGoal").value);
+    var st=pf("sStart"),go=pf("sGoal");
     if(isNaN(st)){g("sStart").focus();return;}
     if(isNaN(go))go=st-10;
     S={start:st,goal:go,startDate:ymd(),days:{},weights:[{date:ymd(),kg:st}],reached:[],weighDay:0,badgesSeen:[],focusHabit:null};
@@ -676,7 +677,7 @@
     }
   }
   g("wSave").onclick=function(){
-    var v=parseFloat(g("wInput").value);if(isNaN(v))return;
+    var v=pf("wInput");if(isNaN(v))return;
     var k=today(),f=S.weights.filter(function(x){return x.date===k;})[0];
     if(f)f.kg=v;else S.weights.push({date:k,kg:v});
     S.weights.sort(function(a,b){return a.date<b.date?-1:1;});
@@ -688,11 +689,11 @@
   };
 
   /* ---- Ajustes / respaldo ---- */
-  function openSettings(){g("sgStart").value=S.start;g("sgGoal").value=S.goal;g("sgWeigh").value=String(S.weighDay||0);g("settings").classList.remove("hidden");}
+  function openSettings(){g("sgStart").value=nf(S.start);g("sgGoal").value=nf(S.goal);g("sgWeigh").value=String(S.weighDay||0);g("settings").classList.remove("hidden");}
   g("gearBtn").onclick=openSettings;
   g("sgClose").onclick=function(){g("settings").classList.add("hidden");};
   g("sgSave").onclick=function(){
-    var st=parseFloat(g("sgStart").value),go=parseFloat(g("sgGoal").value),wd=parseInt(g("sgWeigh").value,10);
+    var st=pf("sgStart"),go=pf("sgGoal"),wd=parseInt(g("sgWeigh").value,10);
     if(!isNaN(st))S.start=st;if(!isNaN(go))S.goal=go;if(!isNaN(wd))S.weighDay=wd;
     save();g("settings").classList.add("hidden");renderHoy();
   };
