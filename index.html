@@ -760,11 +760,12 @@
     return {ok:true,proj:proj,delta:delta};
   }
 
-  function weekAdh(mon){
-    var done=0,poss=0,now=new Date(),sd=parseYmd(S.startDate);
-    for(var i=0;i<7;i++){var day=addDays(mon,i);if(day>now)break;if(day<sd)continue;var k=ymd(day);done+=dayDone(k);poss+=dayCount(k);}
-    return poss?done/poss:0;
+  function weekMet(mon){
+    var met=0,el=0,now=new Date(),sd=parseYmd(S.startDate);
+    for(var i=0;i<7;i++){var day=addDays(mon,i);if(day>now)break;if(day<sd)continue;var k=ymd(day);el++;if(dayDone(k)>=dayTH(k))met++;}
+    return {met:met,elapsed:el,ratio:el?met/el:0};
   }
+  function weekAdh(mon){return weekMet(mon).ratio;}
   function weeklyStreak(){
     var lastMon=addDays(mondayOf(new Date()),-7),n=0,sd=parseYmd(S.startDate);
     for(var i=0;i<60;i++){var m=addDays(lastMon,-7*i);if(addDays(m,6)<sd)break;if(weekAdh(m)>=WEEK_GOAL)n++;else break;}
@@ -794,14 +795,18 @@
 
   function renderWeeklyStreak(){
     var box=g("weekStreakCard");if(!box)return;
-    var n=weeklyStreak(),cur=weekAdh(mondayOf(new Date())),pct=Math.round(cur*100);
+    var n=weeklyStreak(),wd=weekMet(mondayOf(new Date())),goalD=5,rem=7-wd.elapsed;
+    var status=wd.met>=goalD?'<span class="stat-ok">¡meta de la semana alcanzada! 🎉</span>'
+      :(wd.met+rem<goalD?'esta semana quedó lejos — ¡vamos por la próxima!'
+        :'te faltan <b>'+(goalD-wd.met)+'</b> día'+((goalD-wd.met)===1?'':'s')+' para sumarla');
     var html='<div class="card"><div class="card-hd"><div><h3 class="card-t">Racha semanal</h3>'+
-      '<p class="card-s">Semanas seguidas cumpliendo tu meta de constancia (70%).</p></div>'+
+      '<p class="card-s">Semanas seguidas cumpliendo el día al menos 5 de 7 veces.</p></div>'+
       '<div class="wkstreaknum">🗓️ '+n+'</div></div>'+
       '<div class="track"><div class="tf" style="width:0%"></div></div>'+
-      '<p class="card-s" style="margin-top:8px">Esta semana vas <b>'+pct+'%</b> — '+(cur>=WEEK_GOAL?'<span class="stat-ok">¡meta alcanzada!</span>':'te faltan '+Math.max(0,70-pct)+' puntos para sumarla')+'.</p></div>';
+      '<p class="card-s" style="margin-top:8px">Esta semana cumpliste <b>'+wd.met+' de '+wd.elapsed+' día'+(wd.elapsed===1?'':'s')+'</b> — '+status+'.</p></div>';
     box.innerHTML=html;
-    var tf=box.querySelector(".tf");if(tf)requestAnimationFrame(function(){requestAnimationFrame(function(){tf.style.width=Math.min(100,pct)+"%";});});
+    var tf=box.querySelector(".tf"),w=Math.min(100,Math.round(wd.met/goalD*100));
+    if(tf)requestAnimationFrame(function(){requestAnimationFrame(function(){tf.style.width=w+"%";});});
   }
 
   function renderBadges(){
