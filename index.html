@@ -196,6 +196,24 @@
   .box.pop{animation:boxpop .34s ease;}
   .ring.perfect svg{animation:ringglow 1.9s ease-in-out infinite;}
   @keyframes ringglow{0%,100%{filter:drop-shadow(0 0 3px rgba(214,150,90,.4))}50%{filter:drop-shadow(0 0 9px rgba(214,150,90,.85))}}
+  .hstreak{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--c1);flex:0 0 auto;margin-left:6px;}
+  .hstreak.off{display:none;}
+  .fbadge{font-size:9px;font-weight:700;color:#fff;background:var(--c3);border-radius:99px;padding:2px 7px;flex:0 0 auto;text-transform:uppercase;letter-spacing:.04em;margin-left:6px;}
+  .projrow{display:flex;align-items:baseline;gap:12px;}
+  .projbig{font-family:var(--disp);font-weight:600;font-size:46px;line-height:.9;color:var(--c2);}
+  .projlab{font-size:13px;color:var(--muted);}
+  .wkstreaknum{font-family:var(--disp);font-weight:600;font-size:22px;color:var(--c1);flex:0 0 auto;}
+  #badges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .badge{text-align:center;background:#F7F1E7;border-radius:14px;padding:12px 6px;opacity:.5;}
+  .badge.u{opacity:1;background:linear-gradient(150deg,var(--sage-soft),#F5E9DE);}
+  .bic{font-size:24px;line-height:1;}
+  .bn{font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.2;}
+  .badge.u .bn{color:var(--ink);font-weight:600;}
+  .wclose{border:1px solid #E7D8C6;background:linear-gradient(135deg,#FBF3E8,#F6E9DB);}
+  .flabel{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:8px;}
+  .fchips{display:flex;flex-wrap:wrap;gap:7px;}
+  .fchip{font-family:var(--body);font-weight:600;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:99px;padding:6px 11px;cursor:pointer;}
+  .fchip.on{background:var(--c2);color:#fff;border-color:var(--c2);}
 </style>
 </head>
 <body>
@@ -212,6 +230,7 @@
   <!-- HOY -->
   <section class="view active" id="v-hoy">
     <div id="reminder"></div>
+    <div id="weekClose"></div>
 
     <div class="card">
       <div class="wsum">
@@ -271,11 +290,19 @@
     </div>
 
     <div id="streakProg"></div>
+    <div id="projCard"></div>
+    <div id="weekStreakCard"></div>
 
     <div class="card">
       <h3 class="card-t">Hitos</h3>
       <p class="card-s" style="margin-bottom:12px">Los 10 kg, de a poco.</p>
       <div class="medals" id="medals"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-t">Logros</h3>
+      <p class="card-s" style="margin-bottom:12px">Tu vitrina de logros.</p>
+      <div id="badges"></div>
     </div>
 
     <div class="card">
@@ -297,13 +324,13 @@
 
     <div class="card">
       <h3 class="card-t">Tu curva de peso</h3>
-      <p class="card-s" style="margin-bottom:6px">La línea punteada verde es la meta; la gris, el ritmo para llegar en 3 meses.</p>
+      <p class="card-s" style="margin-bottom:6px">La línea llena es tu tendencia de 7 días (suaviza el ruido diario); los puntos son tus registros. Verde punteada: meta. Gris: el ritmo para llegar en 3 meses.</p>
       <div class="wbtn">
         <input type="number" id="wInput" inputmode="decimal" placeholder="Registrar peso de hoy (ej: 71.5)" step="0.1">
         <button class="btn grad" id="wSave">Guardar</button>
       </div>
       <div class="chart" id="chart"></div>
-      <div class="legend"><span><i style="border-color:#D08A66"></i>Tu peso</span><span><i style="border-color:#8A8078;border-top-style:dashed"></i>Vas en camino</span><span><i style="border-color:#6E9E86;border-top-style:dashed"></i>Meta</span></div>
+      <div class="legend"><span><i style="border-color:#D08A66"></i>Tendencia (7 días)</span><span><i style="border-color:#8A8078;border-top-style:dashed"></i>Vas en camino</span><span><i style="border-color:#6E9E86;border-top-style:dashed"></i>Meta</span></div>
     </div>
 
     <div class="card">
@@ -395,9 +422,9 @@
   var WEEKS=13, MILES=[2.5,5,7.5,10];
 
   function load(){
-    try{var s=JSON.parse(localStorage.getItem(KEY));if(s){if(s.weighDay==null)s.weighDay=0;if(!s.reached)s.reached=[];return s;}}catch(e){}
+    try{var s=JSON.parse(localStorage.getItem(KEY));if(s){if(s.weighDay==null)s.weighDay=0;if(!s.reached)s.reached=[];if(!s.badgesSeen)s.badgesSeen=[];if(s.focusHabit===undefined)s.focusHabit=null;return s;}}catch(e){}
     for(var i=0;i<OLDS.length;i++){try{var o=JSON.parse(localStorage.getItem(OLDS[i]));
-      if(o&&o.start!=null)return {start:o.start,goal:o.goal,startDate:o.startDate,days:o.days||{},weights:o.weights||[],reached:[],weighDay:0};
+      if(o&&o.start!=null)return {start:o.start,goal:o.goal,startDate:o.startDate,days:o.days||{},weights:o.weights||[],reached:[],weighDay:0,badgesSeen:[],focusHabit:null};
     }catch(e){}}
     return null;
   }
@@ -432,7 +459,7 @@
     var st=parseFloat(g("sStart").value),go=parseFloat(g("sGoal").value);
     if(isNaN(st)){g("sStart").focus();return;}
     if(isNaN(go))go=st-10;
-    S={start:st,goal:go,startDate:ymd(),days:{},weights:[{date:ymd(),kg:st}],reached:[],weighDay:0};
+    S={start:st,goal:go,startDate:ymd(),days:{},weights:[{date:ymd(),kg:st}],reached:[],weighDay:0,badgesSeen:[],focusHabit:null};
     save();g("setup").classList.add("hidden");render();
   };
 
@@ -454,7 +481,7 @@
     var cur=curWeight(),lost=Math.max(0,S.start-cur),pct=Math.min(100,lost/totalToLose()*100);
     animNum(g("hLost"),lost,1,"–");
     (function(){var tf=g("hTrack");tf.style.width="0%";requestAnimationFrame(function(){requestAnimationFrame(function(){tf.style.width=pct+"%";});});})();
-    g("hSide").innerHTML="faltan <b>"+nf(Math.max(0,cur-S.goal))+" kg</b><br>peso: "+nf(cur)+" kg";
+    g("hSide").innerHTML="faltan <b>"+nf(Math.max(0,cur-S.goal))+" kg</b><br>peso: "+nf(cur)+" kg<br>⏳ "+daysLeft()+" días";
     var wn=weekNumber(),tgt=Math.max(S.goal,S.start-ratePerWeek()*wn);
     var diff=cur-tgt, html='<b>🎯 Semana '+wn+':</b> llegar a '+nf(tgt)+' kg — ';
     if(diff<=0.05)html+='<span class="stat-ok">¡vas en meta o mejor! 🎉</span>';
@@ -469,6 +496,7 @@
     renderTasks();
     var n=dayDone(today()),N=dayCount(today());
     animRing("dayRing",251,N?n/N:0);
+    renderWeekClose();
   }
   function renderTasks(){
     var wrap=g("taskList");wrap.innerHTML="";
@@ -476,12 +504,15 @@
     dayHabits(today()).forEach(function(h){
       var row=document.createElement("div");row.className="task"+(d[h.id]?" on":"");
       var sub=h.id==="train"?(TRAIN[dow]?TRAIN[dow]:"Descanso activo — enfocate en los pasos"):"";
+      var hs=habitStreak(h.id),fb=(S.focusHabit===h.id)?'<span class="fbadge">foco</span>':'';
       row.innerHTML='<span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span>'+
-        '<span class="emoji">'+h.e+'</span><span class="tlabel">'+h.l+(sub?'<small>'+sub+'</small>':'')+'</span>';
+        '<span class="emoji">'+h.e+'</span><span class="tlabel">'+h.l+(sub?'<small>'+sub+'</small>':'')+'</span>'+
+        fb+'<span class="hstreak'+(hs>=2?'':' off')+'">🔥 '+hs+'</span>';
       row.onclick=function(){
         var was=!!dayObj()[h.id];dayObj()[h.id]=!was;save();
         row.classList.toggle("on",!was);
         if(!was){var bx=row.querySelector(".box");if(bx){bx.classList.remove("pop");void bx.offsetWidth;bx.classList.add("pop");}haptic(12);}
+        var fl=row.querySelector(".hstreak"),ns=habitStreak(h.id);if(fl){fl.textContent="🔥 "+ns;fl.classList.toggle("off",ns<2);}
         updateDayRing();
         if(!was && dayDone(today())===dayCount(today())){celebrate();haptic([15,55,25]);}
       };
@@ -496,7 +527,11 @@
     var rr=document.querySelector("#v-hoy .ring");if(rr)rr.classList.toggle("perfect",N>0&&n===N);
     var dow=new Date().getDay(),tr=TRAIN[dow];
     var head=isRest(today())?"Hoy es día de descanso 🌙":(tr?("Hoy toca "+tr.split(" · ")[0]+" 🏋️"):"Hoy es día de recuperar 🧘");
-    var tail=n===N?"¡Día completo! Enorme. 🎉":n>=dayTH(today())?"Muy bien, casi lo cerrás.":"Un objetivo a la vez.";
+    var th=dayTH(today()),hr=new Date().getHours(),tail;
+    if(n===N)tail="¡Día completo! Enorme. 🎉";
+    else if(hr>=18&&!isRest(today())&&n<th)tail=(n===0?"Aunque sea uno hoy: mantener el hábito vale más que el día perfecto.":"Vas "+n+" — sumá uno más y salvás el día 💪");
+    else if(n>=th)tail="Muy bien, casi lo cerrás.";
+    else tail="Un objetivo a la vez.";
     g("todayMsg").innerHTML=head+"<small>"+tail+"</small>";
     renderStreak();
   }
@@ -546,7 +581,7 @@
     animRing("goalRing",515,pct/100);
     g("curW").textContent=nf(cur);g("leftKg").textContent=nf(Math.max(0,cur-S.goal));
     renderStreak();
-    renderMedals(lost);renderAdherence();renderWeek();renderChart();renderHeat();
+    renderMedals(lost);renderAdherence();renderWeek();renderChart();renderHeat();renderProjection();renderWeeklyStreak();renderBadges();
   }
   function renderMedals(lost){
     var box=g("medals");box.innerHTML="";
@@ -608,22 +643,22 @@
     var box=g("chart"),w=S.weights.slice();
     if(!w.length){box.innerHTML='<div class="empty">Registrá tu peso para ver tu curva.</div>';return;}
     var W=420,H=130,padX=8,padY=10;
-    var t0=parseYmd(S.startDate),t1=addDays(t0,WEEKS*7);
-    var span=Math.max(1,(t1-t0));
+    var t0=parseYmd(S.startDate),t1=addDays(t0,WEEKS*7),span=Math.max(1,(t1-t0));
+    var ma=w.map(function(x){var dt=parseYmd(x.date),sum=0,c=0;
+      w.forEach(function(y){var diff=(dt-parseYmd(y.date))/86400000;if(diff>=0&&diff<7){sum+=y.kg;c++;}});
+      return c?sum/c:x.kg;});
     var kgs=w.map(function(x){return x.kg;});
-    var min=Math.min.apply(null,kgs.concat([S.goal])),max=Math.max.apply(null,kgs.concat([S.start]));
+    var min=Math.min.apply(null,kgs.concat(ma).concat([S.goal])),max=Math.max.apply(null,kgs.concat([S.start]));
     var rng=Math.max(0.5,max-min);
     function X(dt){return padX+Math.min(1,Math.max(0,(dt-t0)/span))*(W-2*padX);}
     function Y(v){return padY+(1-(v-min)/rng)*(H-2*padY);}
-    var pts=w.map(function(x){return X(parseYmd(x.date))+","+Y(x.kg);}).join(" ");
-    var gy=Y(S.goal);
-    var guide="M"+X(t0)+","+Y(S.start)+" L"+X(t1)+","+Y(S.goal);
+    var gy=Y(S.goal),guide="M"+X(t0)+","+Y(S.start)+" L"+X(t1)+","+Y(S.goal);
+    var maPts=w.map(function(x,i){return X(parseYmd(x.date))+","+Y(ma[i]);}).join(" ");
     box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-      '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D08A66" stop-opacity="0.20"/><stop offset="1" stop-color="#D08A66" stop-opacity="0"/></linearGradient></defs>'+
       '<line x1="'+padX+'" y1="'+gy+'" x2="'+(W-padX)+'" y2="'+gy+'" stroke="#6E9E86" stroke-width="1.5" stroke-dasharray="5 5"/>'+
       '<path d="'+guide+'" stroke="#CFC6B8" stroke-width="1.8" stroke-dasharray="4 4" fill="none"/>'+
-      (w.length>1?'<polyline points="'+pts+'" fill="none" stroke="#D08A66" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>':'')+
-      w.map(function(x){return '<circle cx="'+X(parseYmd(x.date))+'" cy="'+Y(x.kg)+'" r="3.2" fill="#fff" stroke="#D08A66" stroke-width="2.4"/>';}).join("")+'</svg>';
+      (w.length>1?'<polyline points="'+maPts+'" fill="none" stroke="#D08A66" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>':'')+
+      w.map(function(x){return '<circle cx="'+X(parseYmd(x.date))+'" cy="'+Y(x.kg)+'" r="2.6" fill="#D08A66" opacity="0.35"/>';}).join("")+'</svg>';
   }
   function renderHeat(){
     var box=g("heat");box.innerHTML="";
@@ -675,7 +710,7 @@
       try{var d=JSON.parse(rd.result);
         if(d&&d.start!=null&&d.days&&d.weights){
           if(confirm("Esto reemplazará tus datos actuales por los del archivo. ¿Continuar?")){
-            S={start:d.start,goal:(d.goal!=null?d.goal:d.start-10),startDate:d.startDate||today(),days:d.days||{},weights:d.weights||[],reached:d.reached||[],weighDay:(d.weighDay!=null?d.weighDay:0)};
+            S={start:d.start,goal:(d.goal!=null?d.goal:d.start-10),startDate:d.startDate||today(),days:d.days||{},weights:d.weights||[],reached:d.reached||[],weighDay:(d.weighDay!=null?d.weighDay:0),badgesSeen:d.badgesSeen||[],focusHabit:(d.focusHabit!==undefined?d.focusHabit:null)};
             save();g("settings").classList.add("hidden");renderHoy();renderProgress();alert("¡Datos importados!");
           }
         }else alert("El archivo no parece un respaldo válido.");
@@ -704,6 +739,113 @@
       p.animate([{transform:"translate(0,0) rotate(0)",opacity:1},{transform:"translate("+dx+"px,"+dy+"px) rotate("+rot+"deg)",opacity:0}],
         {duration:1100+Math.random()*700,easing:"cubic-bezier(.2,.6,.3,1)"});
       box.appendChild(p);setTimeout((function(el){return function(){el.remove();};})(p),1900);}
+  }
+
+  var WEEK_GOAL=0.7;
+  var SM=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  function fmtShort(d){return d.getDate()+" "+SM[d.getMonth()];}
+  function goalDate(){return addDays(parseYmd(S.startDate),WEEKS*7);}
+  function daysLeft(){return Math.max(0,dbetween(new Date(),goalDate()));}
+
+  function projection(){
+    var w=S.weights;if(!w||w.length<2)return {ok:false};
+    var first=w[0],last=w[w.length-1];
+    var days=Math.max(1,dbetween(parseYmd(first.date),parseYmd(last.date)));
+    var rate=(first.kg-last.kg)/days, cur=last.kg, remaining=cur-S.goal;
+    if(remaining<=0)return {ok:true,done:true};
+    if(rate<=0.005)return {ok:false,slow:true};
+    var need=Math.ceil(remaining/rate), proj=addDays(new Date(),need);
+    var delta=dbetween(goalDate(),proj);
+    return {ok:true,proj:proj,delta:delta};
+  }
+
+  function weekAdh(mon){
+    var done=0,poss=0,now=new Date(),sd=parseYmd(S.startDate);
+    for(var i=0;i<7;i++){var day=addDays(mon,i);if(day>now)break;if(day<sd)continue;var k=ymd(day);done+=dayDone(k);poss+=dayCount(k);}
+    return poss?done/poss:0;
+  }
+  function weeklyStreak(){
+    var lastMon=addDays(mondayOf(new Date()),-7),n=0,sd=parseYmd(S.startDate);
+    for(var i=0;i<60;i++){var m=addDays(lastMon,-7*i);if(addDays(m,6)<sd)break;if(weekAdh(m)>=WEEK_GOAL)n++;else break;}
+    return n;
+  }
+  function habitStreak(id){
+    var d=new Date(),sd=parseYmd(S.startDate);
+    if(!(S.days[today()]&&S.days[today()][id]))d=addDays(d,-1);
+    var n=0;
+    for(var i=0;i<400;i++){var k=ymd(d);if(parseYmd(k)<sd)break;
+      if(id==="train"&&isRest(k)){d=addDays(d,-1);continue;}
+      if(S.days[k]&&S.days[k][id]){n++;d=addDays(d,-1);}else break;}
+    return n;
+  }
+
+  function renderProjection(){
+    var box=g("projCard");if(!box)return;
+    var dl=daysLeft(),pj=projection(),html='<div class="card"><h3 class="card-t">Camino a la meta</h3>'+
+      '<div class="projrow"><div class="projbig">'+dl+'</div><div class="projlab">días para tu meta<br>de 3 meses</div></div>';
+    if(pj.ok&&pj.done)html+='<p class="card-s" style="margin-top:8px">🏆 ¡Ya alcanzaste tu meta de peso!</p>';
+    else if(pj.ok){var st=pj.delta<=0?'<span class="stat-ok">vas en horario ✅</span>':'<span class="stat-no">'+pj.delta+' días por detrás</span>';
+      html+='<p class="card-s" style="margin-top:8px">A tu ritmo actual llegás cerca del <b>'+fmtShort(pj.proj)+'</b> — '+st+'.</p>';}
+    else if(pj.slow)html+='<p class="card-s" style="margin-top:8px">Todavía sin tendencia de bajada. Seguí registrando tu peso para proyectar la fecha.</p>';
+    else html+='<p class="card-s" style="margin-top:8px">Registrá tu peso al menos dos veces para ver la proyección.</p>';
+    box.innerHTML=html+'</div>';
+  }
+
+  function renderWeeklyStreak(){
+    var box=g("weekStreakCard");if(!box)return;
+    var n=weeklyStreak(),cur=weekAdh(mondayOf(new Date())),pct=Math.round(cur*100);
+    var html='<div class="card"><div class="card-hd"><div><h3 class="card-t">Racha semanal</h3>'+
+      '<p class="card-s">Semanas seguidas cumpliendo tu meta de constancia (70%).</p></div>'+
+      '<div class="wkstreaknum">🗓️ '+n+'</div></div>'+
+      '<div class="track"><div class="tf" style="width:0%"></div></div>'+
+      '<p class="card-s" style="margin-top:8px">Esta semana vas <b>'+pct+'%</b> — '+(cur>=WEEK_GOAL?'<span class="stat-ok">¡meta alcanzada!</span>':'te faltan '+Math.max(0,70-pct)+' puntos para sumarla')+'.</p></div>';
+    box.innerHTML=html;
+    var tf=box.querySelector(".tf");if(tf)requestAnimationFrame(function(){requestAnimationFrame(function(){tf.style.width=Math.min(100,pct)+"%";});});
+  }
+
+  function renderBadges(){
+    var box=g("badges");if(!box)return;
+    var start=parseYmd(S.startDate),end=new Date(),perfect=0,dK;
+    for(var dd=new Date(start);dd<=end;dd=addDays(dd,1)){dK=ymd(dd);if(dayCount(dK)>0&&dayDone(dK)===dayCount(dK))perfect++;}
+    var best=streaks().best,lost=Math.max(0,S.start-curWeight()),weighs=S.weights.length;
+    var mon=mondayOf(new Date()),weeksMet=0,bestW=0;
+    for(var i=0;i<60;i++){var m=addDays(mon,-7*i);if(addDays(m,6)<start)break;var a=weekAdh(m);if(a>bestW)bestW=a;if(i>0&&a>=WEEK_GOAL)weeksMet++;}
+    var wstreak=weeklyStreak();
+    var A=[
+      {id:"firstperfect",ic:"⭐",n:"Primer día perfecto",u:perfect>=1},
+      {id:"s7",ic:"🔥",n:"Racha de 7 días",u:best>=7},
+      {id:"s14",ic:"🔥",n:"Racha de 14 días",u:best>=14},
+      {id:"s30",ic:"🏔️",n:"Racha de 30 días",u:best>=30},
+      {id:"w1",ic:"✅",n:"1ª semana cumplida",u:weeksMet>=1},
+      {id:"wperf",ic:"💯",n:"Semana perfecta",u:bestW>=0.99},
+      {id:"ws3",ic:"🗓️",n:"3 semanas seguidas",u:wstreak>=3},
+      {id:"log10",ic:"📈",n:"10 registros de peso",u:weighs>=10},
+      {id:"kg25",ic:"🏅",n:"–2,5 kg",u:lost>=2.5},
+      {id:"kg5",ic:"🏅",n:"–5 kg",u:lost>=5},
+      {id:"kg75",ic:"🏅",n:"–7,5 kg",u:lost>=7.5},
+      {id:"kg10",ic:"🏆",n:"Meta –10 kg",u:lost>=10}
+    ];
+    if(!S.badgesSeen)S.badgesSeen=[];var newly=false;
+    A.forEach(function(b){if(b.u&&S.badgesSeen.indexOf(b.id)<0){S.badgesSeen.push(b.id);newly=true;}});
+    if(newly)save();
+    box.innerHTML=A.map(function(b){return '<div class="badge'+(b.u?' u':'')+'"><div class="bic">'+(b.u?b.ic:'🔒')+'</div><div class="bn">'+b.n+'</div></div>';}).join("");
+    if(newly)setTimeout(celebrate,250);
+  }
+
+  function renderWeekClose(){
+    var box=g("weekClose");if(!box)return;
+    if(new Date().getDay()!==0){box.innerHTML="";return;}
+    var mon=mondayOf(new Date()),pct=Math.round(weekAdh(mon)*100),monK=ymd(mon),startW=null;
+    for(var i=S.weights.length-1;i>=0;i--){if(S.weights[i].date<=monK){startW=S.weights[i].kg;break;}}
+    var cur=curWeight(),kgTxt=(startW!=null)?("–"+nf(Math.max(0,startW-cur))+" kg"):"—";
+    var bestName="—",bestR=-1,now=new Date();
+    for(var j=0;j<7;j++){var day=addDays(mon,j);if(day>now)break;var k=ymd(day),N=dayCount(k),r=N?dayDone(k)/N:0;if(r>bestR){bestR=r;bestName=DOW[day.getDay()];}}
+    var chips=HABITS.map(function(h){return '<button class="fchip'+(S.focusHabit===h.id?" on":"")+'" data-f="'+h.id+'">'+h.e+' '+h.s+'</button>';}).join("");
+    box.innerHTML='<div class="card wclose"><h3 class="card-t">🗓️ Cierre de semana</h3>'+
+      '<p class="card-s" style="margin:6px 0 12px">Constancia <b>'+pct+'%</b> · Peso <b>'+kgTxt+'</b> · Mejor día: <b>'+bestName+'</b></p>'+
+      '<div class="flabel">Elegí tu foco para la próxima semana:</div><div class="fchips">'+chips+'</div></div>';
+    box.querySelectorAll(".fchip").forEach(function(btn){btn.onclick=function(){
+      S.focusHabit=(S.focusHabit===btn.dataset.f)?null:btn.dataset.f;save();renderWeekClose();renderTasks();};});
   }
 
   function render(){if(needSetup()){openSetup();return;}renderHoy();}
