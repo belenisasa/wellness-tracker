@@ -214,6 +214,10 @@
   .fchips{display:flex;flex-wrap:wrap;gap:7px;}
   .fchip{font-family:var(--body);font-weight:600;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:99px;padding:6px 11px;cursor:pointer;}
   .fchip.on{background:var(--c2);color:#fff;border-color:var(--c2);}
+  .daynav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;}
+  .navbtn{width:34px;height:34px;border-radius:11px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh);}
+  .navbtn:disabled{opacity:.3;cursor:default;box-shadow:none;}
+  .navlabel{font-family:var(--disp);font-weight:600;font-size:17px;color:var(--ink);min-width:130px;text-align:center;text-transform:capitalize;}
 </style>
 </head>
 <body>
@@ -243,6 +247,8 @@
 
     <div id="streakHoy"></div>
 
+    <div id="dayNav" class="daynav"></div>
+
     <div class="card">
       <div class="today-top">
         <div class="ring">
@@ -259,7 +265,7 @@
 
     <div class="card">
       <div class="card-hd">
-        <div><h3 class="card-t">Objetivos de hoy</h3><p class="card-s">Tocá cada uno cuando lo cumplas.</p></div>
+        <div><h3 class="card-t" id="objTitle">Objetivos de hoy</h3><p class="card-s">Tocá cada uno cuando lo cumplas.</p></div>
         <button class="restchip" id="restToggle">🌙 Descanso</button>
       </div>
       <div id="taskList"></div>
@@ -430,6 +436,8 @@
   }
   function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
   var S=load();
+  var curDay=ymd();
+  function viewDay(){return curDay;}
 
   function ymd(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
   function parseYmd(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
@@ -492,17 +500,13 @@
     if(new Date().getDay()===(S.weighDay||0) && !loggedToday)
       rem.innerHTML='<div class="banner">⚖️ Hoy toca registrar tu peso — anotalo en la pestaña Progreso.</div>';
     else rem.innerHTML="";
-    g("restToggle").className="restchip"+(isRest(today())?" on":"");
-    g("restToggle").textContent=isRest(today())?"🌙 En descanso":"🌙 Descanso";
-    renderTasks();
-    var n=dayDone(today()),N=dayCount(today());
-    animRing("dayRing",251,N?n/N:0);
+    renderDaySection();
     renderWeekClose();
   }
   function renderTasks(){
     var wrap=g("taskList");wrap.innerHTML="";
-    var d=dayObj(),dow=new Date().getDay();
-    dayHabits(today()).forEach(function(h){
+    var k=viewDay(),d=dayObj(k),dow=parseYmd(k).getDay();
+    dayHabits(k).forEach(function(h){
       var row=document.createElement("div");row.className="task"+(d[h.id]?" on":"");
       var sub=h.id==="train"?(TRAIN[dow]?TRAIN[dow]:"Descanso activo — enfocate en los pasos"):"";
       var hs=habitStreak(h.id),fb=(S.focusHabit===h.id)?'<span class="fbadge">foco</span>':'';
@@ -510,34 +514,34 @@
         '<span class="emoji">'+h.e+'</span><span class="tlabel">'+h.l+(sub?'<small>'+sub+'</small>':'')+'</span>'+
         fb+'<span class="hstreak'+(hs>=2?'':' off')+'">🔥 '+hs+'</span>';
       row.onclick=function(){
-        var was=!!dayObj()[h.id];dayObj()[h.id]=!was;save();
+        var was=!!dayObj(k)[h.id];dayObj(k)[h.id]=!was;save();
         row.classList.toggle("on",!was);
         if(!was){var bx=row.querySelector(".box");if(bx){bx.classList.remove("pop");void bx.offsetWidth;bx.classList.add("pop");}haptic(12);}
         var fl=row.querySelector(".hstreak"),ns=habitStreak(h.id);if(fl){fl.textContent="🔥 "+ns;fl.classList.toggle("off",ns<2);}
         updateDayRing();
-        if(!was && dayDone(today())===dayCount(today())){celebrate();haptic([15,55,25]);}
+        if(!was && dayDone(k)===dayCount(k)){celebrate();haptic([15,55,25]);}
       };
       wrap.appendChild(row);
     });
     updateDayRing();
   }
   function updateDayRing(){
-    var n=dayDone(today()),N=dayCount(today());
+    var k=viewDay(),n=dayDone(k),N=dayCount(k),isToday=(k===today());
     g("dayCount").textContent=n;g("dayTot").textContent="de "+N;
     g("dayRing").style.strokeDashoffset=251-(251*(N?n/N:0));
     var rr=document.querySelector("#v-hoy .ring");if(rr)rr.classList.toggle("perfect",N>0&&n===N);
-    var dow=new Date().getDay(),tr=TRAIN[dow];
-    var head=isRest(today())?"Hoy es día de descanso 🌙":(tr?("Hoy toca "+tr.split(" · ")[0]+" 🏋️"):"Hoy es día de recuperar 🧘");
-    var th=dayTH(today()),hr=new Date().getHours(),tail;
+    var dow=parseYmd(k).getDay(),tr=TRAIN[dow];
+    var head=isRest(k)?"Día de descanso 🌙":(tr?((isToday?"Hoy toca ":"Toca ")+tr.split(" · ")[0]+" 🏋️"):(isToday?"Hoy es día de recuperar 🧘":"Día de recuperación 🧘"));
+    var th=dayTH(k),hr=new Date().getHours(),tail;
     if(n===N)tail="¡Día completo! Enorme. 🎉";
-    else if(hr>=18&&!isRest(today())&&n<th)tail=(n===0?"Aunque sea uno hoy: mantener el hábito vale más que el día perfecto.":"Vas "+n+" — sumá uno más y salvás el día 💪");
+    else if(isToday&&hr>=18&&!isRest(k)&&n<th)tail=(n===0?"Aunque sea uno hoy: mantener el hábito vale más que el día perfecto.":"Vas "+n+" — sumá uno más y salvás el día 💪");
     else if(n>=th)tail="Muy bien, casi lo cerrás.";
     else tail="Un objetivo a la vez.";
     g("todayMsg").innerHTML=head+"<small>"+tail+"</small>";
     renderStreak();
   }
   g("restToggle").onclick=function(){
-    var d=dayObj();d.__rest=!d.__rest;if(d.__rest)delete d.train;save();renderHoy();
+    var k=viewDay(),d=dayObj(k);d.__rest=!d.__rest;if(d.__rest)delete d.train;save();renderDaySection();
   };
 
   /* ---- PROGRESO ---- */
@@ -727,7 +731,7 @@
       document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on");});
       document.querySelectorAll(".view").forEach(function(x){x.classList.remove("active");});
       t.classList.add("on");g("v-"+t.dataset.v).classList.add("active");
-      if(t.dataset.v==="prog")renderProgress();if(t.dataset.v==="hoy")renderHoy();
+      if(t.dataset.v==="prog")renderProgress();if(t.dataset.v==="hoy"){curDay=today();renderHoy();}
       window.scrollTo(0,0);
     };
   });
@@ -854,6 +858,26 @@
       S.focusHabit=(S.focusHabit===btn.dataset.f)?null:btn.dataset.f;save();renderWeekClose();renderTasks();};});
   }
 
+  function renderDayNav(){
+    var box=g("dayNav");if(!box)return;
+    var k=viewDay(),t=today(),y=ymd(addDays(new Date(),-1));
+    var label=k===t?"Hoy":(k===y?"Ayer":(DOW[parseYmd(k).getDay()]+" "+parseYmd(k).getDate()+" "+SM[parseYmd(k).getMonth()]));
+    var canPrev=parseYmd(k)>parseYmd(S.startDate),canNext=k!==t;
+    box.innerHTML='<button class="navbtn" id="dnPrev"'+(canPrev?'':' disabled')+'>\u2039</button>'+
+      '<div class="navlabel">'+label+'</div>'+
+      '<button class="navbtn" id="dnNext"'+(canNext?'':' disabled')+'>\u203a</button>';
+    if(canPrev)g("dnPrev").onclick=function(){curDay=ymd(addDays(parseYmd(k),-1));renderDaySection();};
+    if(canNext)g("dnNext").onclick=function(){curDay=ymd(addDays(parseYmd(k),1));renderDaySection();};
+  }
+  function renderDaySection(){
+    var k=viewDay(),t=today(),y=ymd(addDays(new Date(),-1));
+    renderDayNav();
+    var ot=g("objTitle");if(ot)ot.textContent=k===t?"Objetivos de hoy":(k===y?"Objetivos de ayer":"Objetivos del día");
+    g("restToggle").className="restchip"+(isRest(k)?" on":"");
+    g("restToggle").textContent=isRest(k)?"🌙 En descanso":"🌙 Descanso";
+    renderTasks();
+    var n=dayDone(k),N=dayCount(k);animRing("dayRing",251,N?n/N:0);
+  }
   function render(){if(needSetup()){openSetup();return;}renderHoy();}
   render();
 })();
